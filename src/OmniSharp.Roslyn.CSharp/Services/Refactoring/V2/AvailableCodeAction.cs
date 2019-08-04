@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +32,11 @@ namespace OmniSharp.Roslyn.CSharp.Services.Refactoring.V2
         public Task<ImmutableArray<CodeActionOperation>> GetOperationsAsync(CancellationToken cancellationToken)
         {
             return CodeAction.GetOperationsAsync(cancellationToken);
+        }
+
+        public async Task<ImmutableArray<CodeActionOperation>> GetOperationsAsync(CodeActionOperator codeActionOperator, CancellationToken cancellationToken)
+        {
+            return await codeActionOperator.GetOperationsAsync(CodeAction, cancellationToken);
         }
     }
 }

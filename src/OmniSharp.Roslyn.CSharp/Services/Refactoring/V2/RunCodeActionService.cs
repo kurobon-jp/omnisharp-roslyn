@@ -4,6 +4,7 @@ using System.Composition;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Resources;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -23,6 +24,8 @@ namespace OmniSharp.Roslyn.CSharp.Services.Refactoring.V2
     [OmniSharpHandler(OmniSharpEndpoints.V2.RunCodeAction, LanguageNames.CSharp)]
     public class RunCodeActionService : BaseCodeActionService<RunCodeActionRequest, RunCodeActionResponse>
     {
+        private static readonly ResourceManager _resourceManager = new ResourceManager("Microsoft.CodeAnalysis.FeaturesResources", typeof(TextTags).Assembly);
+    
         private readonly IAssemblyLoader _loader;
         private readonly Lazy<Assembly> _workspaceAssembly;
 
@@ -43,6 +46,10 @@ namespace OmniSharp.Roslyn.CSharp.Services.Refactoring.V2
 
         public override async Task<RunCodeActionResponse> Handle(RunCodeActionRequest request)
         {
+            if (string.IsNullOrEmpty(request.Identifier) && !string.IsNullOrEmpty(request.Name))
+            {
+                request.Identifier = _resourceManager.GetString(request.Name);
+            }
             var availableActions = await GetAvailableCodeActions(request);
             var availableAction = availableActions.FirstOrDefault(a => a.GetIdentifier().Equals(request.Identifier));
             if (availableAction == null)
@@ -55,8 +62,7 @@ namespace OmniSharp.Roslyn.CSharp.Services.Refactoring.V2
 
             try
             {
-                var operations = await availableAction.GetOperationsAsync(CancellationToken.None);
-
+                var operations = await availableAction.GetOperationsAsync(GetCodeActionOperator(request), CancellationToken.None);
                 var solution = this.Workspace.CurrentSolution;
                 var directory = Path.GetDirectoryName(request.FileName);
 
@@ -213,6 +219,16 @@ namespace OmniSharp.Roslyn.CSharp.Services.Refactoring.V2
         {
             var directory = Path.GetDirectoryName(currentFilePath);
             return Path.Combine(directory, newFileName);
+        }
+
+        private CodeActionOperator GetCodeActionOperator(RunCodeActionRequest request)
+        {
+            if ("Generate_overrides".Equals(request.Name))
+            {
+                return new GenerateOverrideCodeActionOperator(request.Params);
+            }
+
+            return new CodeActionOperator();
         }
     }
 }
