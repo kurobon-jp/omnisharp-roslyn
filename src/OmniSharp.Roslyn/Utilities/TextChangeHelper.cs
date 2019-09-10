@@ -17,6 +17,15 @@ namespace OmniSharp.Roslyn.Utilities
             return Convert(oldText, changes);
         }
 
+        public static async Task<IEnumerable<LinePositionSpanTextChange>> GetAsync(TextDocument document, TextDocument oldDocument)
+        {
+            var newText = await document.GetTextAsync();
+            var oldText = await oldDocument.GetTextAsync();
+            var changes = newText.GetTextChanges(SourceText.From(oldText.ToString()));
+
+            return Convert(oldText, changes);
+        }
+
         public static IEnumerable<LinePositionSpanTextChange> Convert(SourceText oldText, params TextChange[] changes)
         {
             return Convert(oldText, (IEnumerable<TextChange>)changes);

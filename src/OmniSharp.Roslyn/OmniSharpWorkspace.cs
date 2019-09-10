@@ -470,6 +470,12 @@ namespace OmniSharp
             OnAdditionalDocumentAdded(documentInfo);
         }
 
+        public void AddAdditionalDocument(DocumentId documentId, string filePath, SourceText text)
+        {
+            var documentInfo = DocumentInfo.Create(documentId, Path.GetFileName(filePath), filePath: filePath);
+            OnAdditionalDocumentAdded(documentInfo.WithTextLoader(TextLoader.From(TextAndVersion.Create(text, VersionStamp.Create()))));
+        }
+
         public void RemoveAdditionalDocument(DocumentId documentId)
         {
             OnAdditionalDocumentRemoved(documentId);

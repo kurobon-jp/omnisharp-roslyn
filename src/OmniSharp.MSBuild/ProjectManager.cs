@@ -413,6 +413,14 @@ namespace OmniSharp.MSBuild
                     QueueProjectUpdate(projectFileInfo.FilePath, allowAutoRestore: false, projectFileInfo.ProjectIdInfo);
                 });
             }
+
+            foreach (var additionalFile in projectFileInfo.AdditionalFiles)
+            {
+                _fileSystemWatcher.Watch(additionalFile, (file, changeType) =>
+                {
+                    QueueProjectUpdate(projectFileInfo.FilePath, allowAutoRestore: false, projectFileInfo.ProjectIdInfo);
+                });
+            }
         }
 
         private void UpdateProject(string projectFilePath)

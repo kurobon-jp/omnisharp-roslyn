@@ -204,6 +204,57 @@ namespace OmniSharp.Roslyn.CSharp.Services.Refactoring.V2
                         }
                     }
                 }
+
+                // Handle changed additional documents
+                foreach (var documentId in projectChange.GetChangedAdditionalDocuments())
+                {
+                    var newDocument = newSolution.GetAdditionalDocument(documentId);
+                    var oldDocument = oldSolution.GetAdditionalDocument(documentId);
+
+                    var filePath = newDocument.FilePath;
+
+                    // file rename
+                    if (oldDocument != null && newDocument.Name != oldDocument.Name)
+                    {
+                        if (wantsAllCodeActionOperations)
+                        {
+                            var newFilePath = GetNewFilePath(newDocument.Name, oldDocument.FilePath);
+                            var text = await oldDocument.GetTextAsync();
+                            var temp = solution.RemoveAdditionalDocument(documentId);
+                            solution = temp.AddAdditionalDocument(DocumentId.CreateNewId(oldDocument.Project.Id, newDocument.Name), newDocument.Name, text, oldDocument.Folders, newFilePath);
+
+                            filePathToResponseMap[filePath] = new RenamedFileResponse(oldDocument.FilePath, newFilePath);
+                            filePathToResponseMap[newFilePath] = new OpenFileResponse(newFilePath);
+                        }
+                        continue;
+                    }
+
+                    var newText = await newDocument.GetTextAsync();
+                    Workspace.RemoveAdditionalDocument(documentId);
+                    Workspace.AddAdditionalDocument(newDocument.Id, filePath, newText);
+
+                    if (!filePathToResponseMap.TryGetValue(filePath, out var fileOperationResponse))
+                    {
+                        fileOperationResponse = new ModifiedFileResponse(filePath);
+                        filePathToResponseMap[filePath] = fileOperationResponse;
+                    }
+
+                    if (fileOperationResponse is ModifiedFileResponse modifiedFileResponse)
+                    {
+                        if (wantTextChanges)
+                        {
+                            var linePositionSpanTextChanges = await TextChanges.GetAsync(newDocument, oldDocument);
+
+                            modifiedFileResponse.Changes = modifiedFileResponse.Changes != null
+                                ? modifiedFileResponse.Changes.Union(linePositionSpanTextChanges)
+                                : linePositionSpanTextChanges;
+                        }
+                        else
+                        {
+                            modifiedFileResponse.Buffer = newText.ToString();
+                        }
+                    }
+                }
             }
 
             return (solution, filePathToResponseMap.Values);
