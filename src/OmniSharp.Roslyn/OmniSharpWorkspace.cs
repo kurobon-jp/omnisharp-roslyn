@@ -54,7 +54,15 @@ namespace OmniSharp
             if (doc != null)
             {
                 var text = doc.GetTextAsync(CancellationToken.None).WaitAndGetResult(CancellationToken.None);
-                this.OnDocumentOpened(documentId, text.Container, activate);
+                if (!IsDocumentOpen(documentId))
+                {
+                    this.OnDocumentOpened(documentId, text.Container, activate);
+                }
+                else
+                {
+                    // Force document changed event for reanalysis.
+                    this.OnDocumentTextLoaderChanged(documentId, TextLoader.From(TextAndVersion.Create(text, VersionStamp.Create())));
+                }
             }
         }
 
@@ -63,10 +71,13 @@ namespace OmniSharp
             var doc = this.CurrentSolution.GetDocument(documentId);
             if (doc != null)
             {
-                var text = doc.GetTextAsync(CancellationToken.None).WaitAndGetResult(CancellationToken.None);
-                var version = doc.GetTextVersionAsync(CancellationToken.None).WaitAndGetResult(CancellationToken.None);
-                var loader = TextLoader.From(TextAndVersion.Create(text, version, doc.FilePath));
-                this.OnDocumentClosed(documentId, loader);
+                if (IsDocumentOpen(documentId))
+                {
+                    var text = doc.GetTextAsync(CancellationToken.None).WaitAndGetResult(CancellationToken.None);
+                    var version = doc.GetTextVersionAsync(CancellationToken.None).WaitAndGetResult(CancellationToken.None);
+                    var loader = TextLoader.From(TextAndVersion.Create(text, version, doc.FilePath));
+                    this.OnDocumentClosed(documentId, loader);
+                }
             }
         }
 
